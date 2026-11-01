@@ -5,7 +5,7 @@ import { ITEM_IDS, ITEMS } from '@/lib/items';
 import type { ItemId } from '@/lib/types';
 import type { CustomerState, Lang } from '@/lib/types';
 import { initialCustomerState } from '@/lib/engine/customer';
-import { Recorder, playBase64, unlockAudio } from '@/lib/audio';
+import { AudioBlockedError, Recorder, playBase64, unlockAudio } from '@/lib/audio';
 import { MAX_RECORDING_SECONDS } from '@/lib/config';
 import { Nav } from '../components/Nav';
 import type { CopilotTurnResponse, SummaryResponse } from '../arena/types';
@@ -43,6 +43,7 @@ export default function CopilotPage() {
   const [typedPrice, setTypedPrice] = useState('');
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
   const recorderRef = useRef<Recorder | null>(null);
   const historyRef = useRef<string[]>([]);
@@ -58,9 +59,23 @@ export default function CopilotPage() {
     setError(null);
   }
 
+  async function safePlay(base64: string, mime: string) {
+    try {
+      await playBase64(base64, mime);
+    } catch (err) {
+      if (err instanceof AudioBlockedError) setAudioBlocked(true);
+    }
+  }
+
   async function sendTurn(opts: { audioBlob?: Blob; vendorText?: string }) {
     setBusy(true);
     setError(null);
+    // Must run before the first `await` so this call stays inside the click/tap
+    // gesture — otherwise the browser silently blocks the later unmuted play().
+    if (mode === 'speak') {
+      const ok = await unlockAudio();
+      setAudioBlocked((prev) => (prev && ok ? false : prev));
+    }
     try {
       let res: Response;
       if (opts.audioBlob) {
@@ -104,8 +119,7 @@ export default function CopilotPage() {
       setLastAudio(data.audio);
 
       if (mode === 'speak') {
-        unlockAudio();
-        playBase64(data.audio.base64, data.audio.mime).catch(() => {});
+        safePlay(data.audio.base64, data.audio.mime);
       }
 
       if (data.nextState.done) {
@@ -117,7 +131,7 @@ export default function CopilotPage() {
         if (summaryRes.ok) {
           const summaryData: SummaryResponse = await summaryRes.json();
           setSummary(summaryData);
-          if (mode === 'speak') playBase64(summaryData.audio.base64, summaryData.audio.mime).catch(() => {});
+          if (mode === 'speak') safePlay(summaryData.audio.base64, summaryData.audio.mime);
         }
       }
     } catch (err) {
@@ -243,7 +257,7 @@ export default function CopilotPage() {
               <p className="mt-1 text-sm text-[var(--ink-soft)]">{latest.english}</p>
               {lastAudio && (
                 <button
-                  onClick={() => playBase64(lastAudio.base64, lastAudio.mime).catch(() => {})}
+                  onClick={() => safePlay(lastAudio.base64, lastAudio.mime)}
                   className="mt-2 text-sm font-medium text-[var(--teal)]"
                 >
                   ▶ Replay
@@ -254,6 +268,14 @@ export default function CopilotPage() {
         </div>
 
         {error && <p className="mt-4 text-sm text-[var(--chilli)]">{error}</p>}
+        {audioBlocked && (
+          <button
+            onClick={async () => setAudioBlocked(!(await unlockAudio()))}
+            className="mt-4 min-h-12 rounded-full bg-[var(--marigold)] px-4 py-2 text-sm font-medium text-white"
+          >
+            🔇 Tap to enable sound
+          </button>
+        )}
 
         {!summary && (
           <div className="mt-6 flex flex-col items-center gap-3">

@@ -13,7 +13,7 @@ import type {
   VendorState,
 } from '@/lib/types';
 import { initialCustomerState } from '@/lib/engine/customer';
-import { base64ToBlob, playBase64, unlockAudio } from '@/lib/audio';
+import { AudioBlockedError, base64ToBlob, playBase64, unlockAudio } from '@/lib/audio';
 import { Nav } from '../components/Nav';
 import { fetchCopilotTurn, fetchSummary, fetchVendorTurn } from './api';
 import { PriceChart, type PricePoint } from './PriceChart';
@@ -70,6 +70,15 @@ export default function ArenaPage() {
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [devOpen, setDevOpen] = useState(false);
   const [timings, setTimings] = useState<Record<string, number>>({});
+  const [audioBlocked, setAudioBlocked] = useState(false);
+
+  async function safePlay(base64: string, mime: string) {
+    try {
+      await playBase64(base64, mime);
+    } catch (err) {
+      if (err instanceof AudioBlockedError) setAudioBlocked(true);
+    }
+  }
 
   const pausedRef = useRef(paused);
   const speedRef = useRef(speed);
@@ -116,7 +125,8 @@ export default function ArenaPage() {
     setSummary(null);
     setTimings({});
     setPhase('running');
-    unlockAudio();
+    const ok = await unlockAudio();
+    setAudioBlocked(!ok);
 
     const item = ITEMS[itemId];
     let vendorState: VendorState | null = null;
@@ -162,7 +172,7 @@ export default function ArenaPage() {
         });
 
         if (vendorState.done) {
-          await playBase64(vendorResp.audio.base64, vendorResp.audio.mime);
+          await safePlay(vendorResp.audio.base64, vendorResp.audio.mime);
           break;
         }
 
@@ -171,7 +181,7 @@ export default function ArenaPage() {
         const groundTruth = computeGroundTruth(vendorResp.decision, lastCustomerDecision);
 
         const [, copilotResp] = await Promise.all([
-          playBase64(vendorResp.audio.base64, vendorResp.audio.mime),
+          safePlay(vendorResp.audio.base64, vendorResp.audio.mime),
           fetchCopilotTurn({
             itemId,
             lang,
@@ -208,7 +218,7 @@ export default function ArenaPage() {
         await waitWhilePaused(runId);
         if (runIdRef.current !== runId) return;
         setThinking('vendor');
-        await playBase64(copilotResp.audio.base64, copilotResp.audio.mime);
+        await safePlay(copilotResp.audio.base64, copilotResp.audio.mime);
       }
 
       if (runIdRef.current !== runId) return;
@@ -223,7 +233,7 @@ export default function ArenaPage() {
       });
       if (runIdRef.current !== runId) return;
       setSummary(summaryResp);
-      await playBase64(summaryResp.audio.base64, summaryResp.audio.mime);
+      await safePlay(summaryResp.audio.base64, summaryResp.audio.mime);
     } catch (err) {
       console.error('[arena] run failed', err);
       setThinking(null);
@@ -337,6 +347,17 @@ export default function ArenaPage() {
               <span className="text-sm text-[var(--ink-soft)]">
                 {item.emoji} {item.name.en} · target ₹{item.customer.good} · limit ₹{item.customer.max}
               </span>
+              {audioBlocked && (
+                <button
+                  onClick={async () => {
+                    const ok = await unlockAudio();
+                    setAudioBlocked(!ok);
+                  }}
+                  className="min-h-12 rounded-full bg-[var(--marigold)] px-4 py-2 text-sm font-medium text-white"
+                >
+                  🔇 Tap to enable sound
+                </button>
+              )}
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">

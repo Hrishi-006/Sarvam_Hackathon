@@ -1,6 +1,15 @@
 'use client';
 
 let sharedAudio: HTMLAudioElement | null = null;
+let unlocked = false;
+
+// 50ms of silence — a real (if inaudible) clip, so play() actually decodes and
+// starts playback within the click handler's gesture. A muted play() on an
+// element with no `src` never truly plays anything, so it doesn't register as
+// genuine engagement and later unmuted play() calls (after an awaited fetch,
+// which breaks the gesture chain) get silently blocked by autoplay policy.
+const SILENCE_WAV =
+  'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
 
 function getSharedAudio(): HTMLAudioElement {
   if (!sharedAudio) {
@@ -10,25 +19,34 @@ function getSharedAudio(): HTMLAudioElement {
   return sharedAudio;
 }
 
-export function unlockAudio() {
+export function isAudioUnlocked(): boolean {
+  return unlocked;
+}
+
+export function unlockAudio(): Promise<boolean> {
   const audio = getSharedAudio();
-  if (audio.paused) {
-    audio.muted = true;
-    audio
-      .play()
-      .then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.muted = false;
-      })
-      .catch(() => {
-        audio.muted = false;
-      });
-  }
+  audio.src = SILENCE_WAV;
+  return audio
+    .play()
+    .then(() => {
+      unlocked = true;
+      return true;
+    })
+    .catch(() => {
+      unlocked = false;
+      return false;
+    });
 }
 
 export function base64ToUrl(base64: string, mime: string): string {
   return `data:${mime};base64,${base64}`;
+}
+
+export class AudioBlockedError extends Error {
+  constructor() {
+    super('audio playback was blocked by the browser — call unlockAudio() from a click handler');
+    this.name = 'AudioBlockedError';
+  }
 }
 
 export function playBase64(base64: string, mime: string): Promise<void> {
@@ -49,7 +67,15 @@ export function playBase64(base64: string, mime: string): Promise<void> {
     };
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
-    audio.play().catch(onError);
+    audio.play().catch((err) => {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        unlocked = false;
+        cleanup();
+        reject(new AudioBlockedError());
+        return;
+      }
+      onError();
+    });
   });
 }
 
