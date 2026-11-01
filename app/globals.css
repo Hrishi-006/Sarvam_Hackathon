@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #fbf6ec;
+  --ink: #1a1a1a;
+  --ink-soft: #4a453c;
+  --taxi: #ffd000;
+  --marigold: #f59e0b;
+  --teal: #0f5257;
+  --chilli: #d7263d;
+  --leaf: #2e9e5b;
+  --card: #ffffff;
+  --border: #e4dcc8;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
 }
 
 @theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-taxi: var(--taxi);
+  --color-marigold: var(--marigold);
+  --color-teal: var(--teal);
+  --color-chilli: var(--chilli);
+  --color-leaf: var(--leaf);
+  --color-card: var(--card);
+  --color-border: var(--border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
+  --font-body: var(--font-inter);
+  --font-dev-display: var(--font-yatra);
+  --font-dev-body: var(--font-mukta);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --paper: #14110d;
+    --ink: #f3ecdf;
+    --ink-soft: #c9c0ad;
+    --taxi: #e3bc1f;
+    --marigold: #d98a2e;
+    --teal: #2f8a90;
+    --chilli: #e0566c;
+    --leaf: #4ebd80;
+    --card: #1c1812;
+    --border: #332c20;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
   }
+}
+
+:root[data-theme="dark"] {
+  --paper: #14110d;
+  --ink: #f3ecdf;
+  --ink-soft: #c9c0ad;
+  --taxi: #e3bc1f;
+  --marigold: #d98a2e;
+  --teal: #2f8a90;
+  --chilli: #e0566c;
+  --leaf: #4ebd80;
+  --card: #1c1812;
+  --border: #332c20;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+.devanagari {
+  font-family: var(--font-dev-body), sans-serif;
+}
+
+.devanagari-display {
+  font-family: var(--font-dev-display), var(--font-dev-body), sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     );
 
     const audioResult = await mark('tts', () =>
-      tts({ text: line, lang: body.lang, speaker: VOICES.customer[body.lang], pace: TTS_PACE_DEFAULT }),
+      tts({ text: line, lang: body.lang, speaker: VOICES.customer[body.lang], pace: body.pace ?? TTS_PACE_DEFAULT }),
     );
 
     return Response.json({

@@ -52,6 +52,7 @@ export const copilotTurnJsonSchema = z.object({
   mode: z.enum(['speak', 'whisper']),
   vendorText: z.string().optional(),
   history: z.array(z.string()).optional(),
+  pace: z.number().optional(),
   groundTruth: z
     .object({
       price: z.number().nullable(),
@@ -68,6 +69,7 @@ export const vendorTurnSchema = z.object({
   customerDecision: customerDecisionSchema.nullable(),
   customerLine: z.string().nullable().optional(),
   history: z.array(z.string()).optional(),
+  pace: z.number().optional(),
 });
 
 export const summarySchema = z.object({
