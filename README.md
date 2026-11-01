@@ -16,6 +16,7 @@ impossible to jailbreak into overpaying, and every demo run repeatable.
 An AI shopkeeper ("Ramesh bhai") exists only to demo AI-vs-AI bargaining on
 stage at `/arena`. The real product, for the customer, is at `/copilot`.
 
+Will be updated with OCR to better predict a just value.
 ## Architecture
 
 ```
