@@ -57,6 +57,13 @@ ambiguous or the live Sarvam docs disagreed with the brief's notes.
 - `max_tokens: 300`. Temperature 0 for extraction, 0.7 for customer/summary
   phrasing, 0.9 for vendor phrasing (per Section 6.6 "sound local" amendment).
 
+## Next.js config
+- Disabled `cacheComponents` / `partialPrefetching` in `next.config.ts` (the
+  create-next-app 16 default). `cacheComponents` rejects the `runtime` route
+  segment config, which the brief requires on every API route (`export const
+  runtime = 'nodejs'`) for Vercel serverless behavior and `maxDuration`. Not
+  needed for this app anyway — no static/cache-heavy pages.
+
 ## Other defaults
 - TTS pace default 1.05 (customer/vendor), Arena speed toggle swaps to 1.2.
 - `VENDOR_STALL_MULTIPLIER = 1.45` as specified.
